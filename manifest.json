@@ -2,7 +2,7 @@
   "id": "./guardian-de-olvidos-pwa",
   "name": "Guardián de Olvidos",
   "short_name": "Guardián",
-  "version": "1.9.1",
+  "version": "1.9.2",
   "description": "Radar Multi-Dispositivo Bluetooth Anti-Olvidos",
   "start_url": "./index.html",
   "scope": "./",
