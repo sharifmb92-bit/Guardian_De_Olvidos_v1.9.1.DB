@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Guardián de Olvidos v1.9.1</title>
+    <title>Guardián de Olvidos v1.9.2</title>
     <link rel="manifest" href="./manifest.json">
     <link rel="icon" type="image/svg+xml" href="./icon.svg">
     <meta name="theme-color" content="#374151">
@@ -38,12 +38,12 @@
             </svg>
         </div>
         
-        <h1 class="text-2xl font-bold mb-1 text-brandGreen">Guardián de Olvidos v1.9.1</h1>
+        <h1 class="text-2xl font-bold mb-1 text-brandGreen">Guardián de Olvidos v1.9.2</h1>
         <p class="text-gray-400 text-sm mb-6">Radar Multi-Dispositivo Bluetooth</p>
 
         <!-- Panel de control principal -->
         <div class="space-y-3 mb-6">
-            <button id="addDeviceBtn" class="w-full bg-brandGreen hover:bg-green-600 text-white font-medium py-3 px-4 rounded-xl transition duration-200 shadow-lg flex items-center justify-center gap-2">
+            <button id="addDeviceBtn" type="button" class="w-full bg-brandGreen hover:bg-green-600 text-white font-medium py-3 px-4 rounded-xl transition duration-200 shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-95">
                 <span>➕ Añadir Dispositivo Bluetooth</span>
             </button>
         </div>
@@ -69,7 +69,7 @@
         <div class="text-left">
             <span class="text-xs font-mono text-gray-400">Diagnóstico del Radar:</span>
             <div id="logTerminal" class="h-28 overflow-y-auto bg-black/70 border border-brandGray rounded-lg p-2 text-xs font-mono text-gray-300 mt-1 space-y-1">
-                <div>[Sistema] Guardián de Olvidos 1.9.1 listo.</div>
+                <div>[Sistema] Guardián de Olvidos 1.9.2 listo.</div>
             </div>
         </div>
     </div>
@@ -78,42 +78,9 @@
         <source src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==" type="audio/wav">
     </audio>
 
-    <script type="module">
-        // medbasha - Guardián de Olvidos v1.9.1
-        import { Geolocation } from '@capacitor/geolocation';
-        import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
-        import { LocalNotifications } from '@capacitor/local-notifications';
-        import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
-        import { Haptics, ImpactStyle } from '@capacitor/haptics';
-        import { Motion } from '@capacitor/motion';
-        import { BleClient } from '@capacitor-community/bluetooth-le';
-
-        window.CapacitorNative = {
-            async initPermissions() {
-                try {
-                    await Geolocation.requestPermissions().catch(() => {});
-                    await Camera.requestPermissions().catch(() => {});
-                    await LocalNotifications.requestPermissions().catch(() => {});
-                    await Filesystem.requestPermissions().catch(() => {});
-                    await BleClient.initialize().catch(() => {});
-                } catch (err) {}
-            },
-            async sendLocalNotification(title, body) {
-                try {
-                    await LocalNotifications.schedule({
-                        notifications: [{ title, body, id: Date.now(), schedule: { at: new Date(Date.now() + 1000) } }]
-                    });
-                } catch (err) {}
-            },
-            async triggerHapticFeedback() {
-                try {
-                    await Haptics.impact({ style: ImpactStyle.Heavy });
-                } catch (err) {}
-            }
-        };
-
-        // medbasha - Módulo IndexedDB
-        const DB_NAME = 'GuardianOlvidosDB_v191';
+    <script>
+        // medbasha - Guardián de Olvidos v1.9.2
+        const DB_NAME = 'GuardianOlvidosDB_v192';
         const DB_VERSION = 1;
         let db = null;
 
@@ -165,29 +132,21 @@
             });
         }
 
-        const addDeviceBtn = document.getElementById('addDeviceBtn');
-        const deviceList = document.getElementById('deviceList');
-        const emptyListMsg = document.getElementById('emptyListMsg');
-        const deviceCount = document.getElementById('deviceCount');
-        const alarmZone = document.getElementById('alarmZone');
-        const silentAudio = document.getElementById('silentAudio');
-        const logTerminal = document.getElementById('logTerminal');
-
         let trackedDevices = [];
         let monitorInterval = null;
         let wakeLock = null;
+
+        let addDeviceBtn, deviceList, emptyListMsg, deviceCount, alarmZone, silentAudio, logTerminal;
 
         function addLog(msg) {
             const time = new Date().toLocaleTimeString();
             const entry = document.createElement('div');
             entry.textContent = `[${time}] ${msg}`;
-            logTerminal.appendChild(entry);
-            logTerminal.scrollTop = logTerminal.scrollHeight;
+            if (logTerminal) {
+                logTerminal.appendChild(entry);
+                logTerminal.scrollTop = logTerminal.scrollHeight;
+            }
             saveLogData(msg).catch(() => {});
-        }
-
-        if (Notification.permission !== "granted") {
-            Notification.requestPermission();
         }
 
         async function requestWakeLock() {
@@ -201,11 +160,24 @@
             }
         }
 
-        window.addEventListener('load', async () => {
-            await initDB();
-            if (window.CapacitorNative) {
-                window.CapacitorNative.initPermissions();
+        window.addEventListener('DOMContentLoaded', async () => {
+            addDeviceBtn = document.getElementById('addDeviceBtn');
+            deviceList = document.getElementById('deviceList');
+            emptyListMsg = document.getElementById('emptyListMsg');
+            deviceCount = document.getElementById('deviceCount');
+            alarmZone = document.getElementById('alarmZone');
+            silentAudio = document.getElementById('silentAudio');
+            logTerminal = document.getElementById('logTerminal');
+
+            if (Notification.permission !== "granted") {
+                Notification.requestPermission();
             }
+
+            addDeviceBtn.addEventListener('click', () => {
+                solicitarNuevoDispositivo();
+            });
+
+            await initDB();
             comprobarMemoriaDispositivos();
             iniciarMonitoreoGlobal();
         });
@@ -236,13 +208,15 @@
             }
         }
 
-        addDeviceBtn.addEventListener('click', () => {
-            solicitarNuevoDispositivo();
-        });
-
         async function solicitarNuevoDispositivo() {
+            if (!navigator.bluetooth) {
+                alert("Navegador no compatible con Bluetooth Web.");
+                addLog("Bluetooth no disponible en este navegador.");
+                return;
+            }
+
             try {
-                silentAudio.play().catch(e => console.log(e));
+                if (silentAudio) silentAudio.play().catch(e => console.log(e));
                 await requestWakeLock();
 
                 addLog("Buscando dispositivo Bluetooth...");
@@ -260,7 +234,7 @@
                 registrarYConectarDispositivo(device);
 
             } catch (error) {
-                addLog(`Búsqueda cancelada o no disponible.`);
+                addLog(`Búsqueda cancelada o cerrada.`);
             }
         }
 
@@ -371,24 +345,19 @@
         function dispararAlarmaTag(item) {
             addLog(`⚠️ ALERTA: ¡${item.name} FUERA DE RANGO!`);
 
-            if (window.CapacitorNative) {
-                window.CapacitorNative.triggerHapticFeedback();
-                window.CapacitorNative.sendLocalNotification("⚠️ ¡Guardián de Olvidos!", `Se ha perdido la señal de: ${item.name}`);
-            } else {
-                if (navigator.vibrate) {
-                    navigator.vibrate([300, 150, 300, 150, 300]);
-                }
+            if (navigator.vibrate) {
+                navigator.vibrate([300, 150, 300, 150, 300]);
+            }
 
-                if (Notification.permission === "granted") {
-                    navigator.serviceWorker.ready.then(registration => {
-                        registration.showNotification("⚠️ ¡Guardián de Olvidos!", {
-                            body: `Se ha perdido la señal de: ${item.name}`,
-                            icon: "./icon-192.png",
-                            tag: `alerta-${item.id}`,
-                            requireInteraction: true
-                        });
+            if (Notification.permission === "granted") {
+                navigator.serviceWorker.ready.then(registration => {
+                    registration.showNotification("⚠️ ¡Guardián de Olvidos!", {
+                        body: `Se ha perdido la señal de: ${item.name}`,
+                        icon: "./icon-192.png",
+                        tag: `alerta-${item.id}`,
+                        requireInteraction: true
                     });
-                }
+                });
             }
 
             ejecutarSonidoAlerta();
@@ -417,6 +386,8 @@
         };
 
         function actualizarListaUI() {
+            if (!deviceCount || !deviceList) return;
+            
             deviceCount.textContent = `${trackedDevices.length} activo(s)`;
 
             if (trackedDevices.length === 0) {
@@ -448,8 +419,8 @@
                         <div class="text-xs text-gray-400 mt-0.5">${statusBadgeHTML}</div>
                     </div>
                     <div class="flex items-center gap-2">
-                        <button onclick="window.reconectarTagManual('${item.id}')" class="text-xs bg-brandGray hover:bg-gray-600 px-2 py-1 rounded text-white">Reconectar</button>
-                        <button onclick="window.desvincularTag('${item.id}')" class="text-xs bg-red-950 hover:bg-red-900 text-red-400 px-2 py-1 rounded border border-red-800">🗑️</button>
+                        <button type="button" onclick="window.reconectarTagManual('${item.id}')" class="text-xs bg-brandGray hover:bg-gray-600 px-2 py-1 rounded text-white">Reconectar</button>
+                        <button type="button" onclick="window.desvincularTag('${item.id}')" class="text-xs bg-red-950 hover:bg-red-900 text-red-400 px-2 py-1 rounded border border-red-800">🗑️</button>
                     </div>
                 `;
                 deviceList.appendChild(card);
